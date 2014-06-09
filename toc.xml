@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Addon Author="Sinus" APIVersion="8" Name="Voo" Description="Data viewer. /voo data">
+    <Script Name="Voo.lua"/>
+    <Form Name="Voo.xml"/>
+</Addon>
