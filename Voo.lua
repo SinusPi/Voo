@@ -180,6 +180,7 @@ function safeFunctionCallV(v,k,data,orig)
 	local ok,err
 	if type(v)=="function" and type(k)=="string"
 	and not WhyBlacklisted(k)
+	and Voo.CALL_FUNCTIONS
 	and ((k:find("^Is")
 		 or k:find("^Can[A-Z]")
 		 or k:find("^Get[A-Z]")
@@ -396,14 +397,15 @@ function VooProto:Update()
 			if type(dat.data)=="table" or type(dat.data)=="userdata" then
 				expandbut:Show(true)
 				expandbut:SetCheck(dat.expanded)
+				expandbut:ChangeArt("BK3:btnHolo_ExpandCollapseSmall")
 			elseif dat.func and not WhyBlacklisted(dat.index) then
 				expandbut:Show(true)
 				expandbut:SetCheck(dat.parent) --TODO: . :
-				--[[
-			elseif dat.parent==_G.SOUNDS then
+				expandbut:ChangeArt("BK3:btnHolo_Options_DragRight")
+			elseif dat.parent==_G.Sound then
 				expandbut:Show(true)
-				expandbut:SetCheck(dat.expanded) --TODO: SOUND
-				--]]
+				expandbut:SetCheck(true)
+				expandbut:ChangeArt("BK3:btnHolo_Options_DragRight")
 			else
 				expandbut:Show(false)
 			end
@@ -432,6 +434,8 @@ function VooProto:Update()
 end
 
 
+local FUNCTIONGROUPS={}
+
 function VooProto:Main(insertpoint,indent,data,orig,mode,command)
 	if not data then return end
 	if not insertpoint then self.lines={} insertpoint=1 end
@@ -456,7 +460,7 @@ function VooProto:Main(insertpoint,indent,data,orig,mode,command)
 			['zz OTHER CONSTS']= {},
 			['zz UI'] = {},
 		}
-		for k,v in pairs(FUNCTIONGROUPS_) do GData[k]={_is_global=true} end
+		--for k,v in pairs(FUNCTIONGROUPS_) do GData[k]={_is_global=true} end
 		local curDataTable = GData[1]
 		local curTableSize, totalSize = 0,0
 		local MAX_GLOBAL = 25000
@@ -758,7 +762,7 @@ function VooProto:ExpandLine(linei)
 
 	local result
 
-	--if data.parent==_G['SOUNDS'] then PlaySound(data.data) return end
+	if data.parent==_G.Sound and type(data)=="number" then _G.Sound.Play(data.data) return end
 	
 	if func and type(func)=="function"
 	and not data[expandcheck]  -- don't call when we're about to COLLAPSE
@@ -769,17 +773,20 @@ function VooProto:ExpandLine(linei)
 
 		
 		--if IsShiftKeyDown() then
-			result={func(unpack(tab.params))}
+		local ok,res = pcallhelper(pcall(func,data.parent or unpack(tab.params)))
+		if ok then result=res end
 		--else
 		--	result={func(data.parent or unpack(tab.params))}
 		--end
 
 
 		--d(Zgoo.FormatType(result))
-		if #result==1 then
-			result=result[1]
-		elseif #result==0 then
-			result=nil
+		if result then
+			if #result==1 then
+				result=result[1]
+			elseif #result==0 then
+				result=nil
+			end
 		end
 
 		if not result then return end
@@ -880,17 +887,15 @@ function VooProto:EventExpandFromRow( wndHandler, wndControl, eMouseButton, nLas
 end
 
 
------------------------------------------------------------------------------------------------
--- VooProto Instance
------------------------------------------------------------------------------------------------
-Voo = VooProto:new()
-Voo:Init()
-
 ---------------------------------------------------------------------------------------------------
 -- VooForm Functions
 ---------------------------------------------------------------------------------------------------
 function VooProto:OnOK( wndHandler, wndControl, eMouseButton )
 	self.Frame:Close()
+end
+
+function VooProto:OnConfig( wndHandler, wndControl, eMouseButton )
+	self.CALL_FUNCTIONS = self.Frame:FindChild("FuncButton"):IsChecked()
 end
 
 local lastscroll = 0
@@ -902,4 +907,12 @@ function VooProto:UpdateOffsetFromScroll( wndHandler, wndControl, nLastRelativeM
 		self:Update()
 	end
 end
+
+
+
+-----------------------------------------------------------------------------------------------
+-- VooProto Instance
+-----------------------------------------------------------------------------------------------
+Voo = VooProto:new()
+Voo:Init()
 
